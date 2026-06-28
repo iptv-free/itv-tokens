@@ -1,14 +1,27 @@
 import requests
 import time
 import os
+import sys
 
 # === SOZLAMALAR ===
-# GitHub Actions da secrets dan oladi, lokal da to'g'ridan yoziladi
-WORKER_URL = os.environ.get("WORKER_URL", "https://itvuz.playtv2099.workers.dev")
-SECRET_KEY = os.environ.get("SECRET_KEY", "mening_maxfiy_kalitim_2024")
+WORKER_URL = os.environ.get("WORKER_URL", "").strip().rstrip("/")
+SECRET_KEY = os.environ.get("SECRET_KEY", "").strip()
 CHANNEL_RANGE = range(1, 301)
 OUTPUT_M3U = "itv_channels.m3u"
 # ==================
+
+# Tekshirish
+if not WORKER_URL:
+    print("XATO: WORKER_URL sozlanmagan!")
+    print("GitHub Secrets da WORKER_URL = https://itvuz.playtv2099.workers.dev bo'lishi kerak")
+    sys.exit(1)
+
+if not SECRET_KEY:
+    print("XATO: SECRET_KEY sozlanmagan!")
+    sys.exit(1)
+
+print(f"Worker URL: {WORKER_URL}")
+print(f"Secret key: {'*' * len(SECRET_KEY)}")
 
 API_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -19,7 +32,7 @@ API_HEADERS = {
 
 def fetch_all_channels():
     channels = []
-    print("Kanallar skanlanmoqda...\n")
+    print("\nKanallar skanlanmoqda...\n")
     for ch_id in CHANNEL_RANGE:
         try:
             url = f"https://api.itv.uz/v2/cards/channels/show?channelId={ch_id}"
@@ -51,24 +64,29 @@ def save_m3u(channels):
     print(f"\n✅ M3U fayl saqlandi: {OUTPUT_M3U} ({len(channels)} kanal)")
 
 def push_tokens(channels):
-    tokens = {str(ch["id"]): {"url": ch["stream_url"], "name": ch["name"], "logo": ch["logo"]} for ch in channels}
+    tokens = {
+        str(ch["id"]): {"url": ch["stream_url"], "name": ch["name"], "logo": ch["logo"]}
+        for ch in channels
+    }
+    push_url = f"{WORKER_URL}/update-tokens"
+    print(f"\nPush qilinmoqda: {push_url}")
     r = requests.post(
-        f"{WORKER_URL}/update-tokens",
+        push_url,
         json=tokens,
         headers={"x-secret": SECRET_KEY, "Content-Type": "application/json"},
-        timeout=15
+        timeout=30
     )
-    print(f"Worker ga push: {r.json()}")
+    print(f"Worker javob: {r.status_code} - {r.json()}")
 
 def main():
     print("=" * 40)
-    print("  ITV Token Pusher")
+    print("  ITV Token Pusher (GitHub Actions)")
     print("=" * 40)
     channels = fetch_all_channels()
     print(f"\nTopildi: {len(channels)} ta kanal")
     save_m3u(channels)
     push_tokens(channels)
-    print("\nTayyor!")
+    print("\n✅ Tayyor!")
 
 if __name__ == "__main__":
     main()
