@@ -2,8 +2,8 @@ name: ITV Token Pusher
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Har 10 daqiqada
-  workflow_dispatch:          # Qo'lda ham ishga tushirish mumkin
+    - cron: '*/8 * * * *'  # Har 8 daqiqada (token 60 min, scan 4 min)
+  workflow_dispatch:
 
 jobs:
   push-tokens:
